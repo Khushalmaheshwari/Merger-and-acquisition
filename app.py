@@ -47,7 +47,7 @@ with st.sidebar:
         submitted = st.form_submit_button("Generate analysis", type="primary", use_container_width=True)
     st.divider()
     st.caption("A run makes six Groq model calls and fetches current financial data. It may take a few minutes.")
-    st.caption("Add GROQ_API_KEY to your local `.env` before running this dashboard.")
+    st.caption("Local run: put GROQ_API_KEY in `.env`. Streamlit Cloud: app menu (⋮) → Settings → Secrets (TOML), then Reboot. `.env` never uploads to Cloud.")
 
 if submitted:
     if not acquirer.strip() or not target.strip() or not ticker.strip():
@@ -68,7 +68,17 @@ if submitted:
             }
         except Exception as exc:
             detail = str(exc)
-            if "Request too large" in detail or "tokens per minute" in detail or "rate_limit_exceeded" in detail:
+            if "GROQ_API_KEY is required" in detail:
+                st.error("GROQ_API_KEY is missing on this hosted app.")
+                st.info(
+                    "Fix: in Streamlit Cloud open the app menu (⋮) → Settings → Secrets, paste:\n\n"
+                    'GROQ_API_KEY = "paste-your-groq-key-here"\n'
+                    'GROQ_MODEL = "openai/gpt-oss-20b"\n'
+                    'MAX_COMPLETION_TOKENS = "700"\n\n'
+                    "Click Save, then Reboot app. Your local `.env` is git-ignored and never reaches Cloud, "
+                    "so the key must be added in Secrets even if it works locally."
+                )
+            elif "Request too large" in detail or "tokens per minute" in detail or "rate_limit_exceeded" in detail:
                 st.error("Groq rejected a request because it exceeded the current token limit.")
                 st.info("The analysis now shortens reports passed between agents and uses a smaller response budget. Restart the dashboard to load the update. If the error continues, lower MAX_COMPLETION_TOKENS in .env (for example, 700) and try again after the provider limit resets.")
             else:
